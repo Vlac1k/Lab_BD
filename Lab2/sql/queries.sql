@@ -38,11 +38,7 @@ ORDER BY c.id;
 
 
 -- Запрос 2.1.3
--- Задача: найти позиции заказов, одновременно удовлетворяющие условиям:
---  - адрес доставки в Москве;
---  - товар из категории «Электроника»;
---  - заказ не отменён и сделан с 01.09.2026;
---  - сумма позиции не меньше 5000.
+-- Задача: найти позиции заказов, одновременно удовлетворяющие нескольким условиям
 SELECT
     o.id AS order_id,
     o.order_date::date AS order_date,
@@ -56,16 +52,13 @@ JOIN addresses a ON a.id = o.address_id AND a.customer_id = o.customer_id
 JOIN order_items oi ON oi.order_id = o.id
 JOIN products p ON p.id = oi.product_id
 JOIN categories cat ON cat.id = p.category_id
-WHERE a.city = 'Москва'
-  AND cat.name = 'Электроника'
-  AND o.status <> 'cancelled'
-  AND o.order_date >= '2026-09-01'
-  AND oi.quantity * oi.price >= 5000
+WHERE a.city = 'Москва' AND cat.name = 'Электроника' AND o.status <> 'cancelled'
+    AND o.order_date >= '2026-09-01' AND oi.quantity * oi.price >= 5000
 ORDER BY line_total DESC;
 
 
 -- Запрос 2.2.1
--- Задача: сколько заказов, единиц и денег приносит каждая категория, каков разброс цен продажи
+-- Задача: сколько заказов, единиц и денег приносит каждая категория, какой разброс цен продажи
 SELECT
     cat.name AS category,
     COUNT(DISTINCT o.id) AS orders_cnt,
@@ -140,15 +133,13 @@ FROM customers c
 WHERE EXISTS (
     SELECT 1
     FROM orders o
-    WHERE o.customer_id = c.id
-      AND o.status = 'cancelled'
-      AND o.order_date >= '2026-09-01'
+    WHERE o.customer_id = c.id AND o.status = 'cancelled' AND o.order_date >= '2026-09-01'
 )
 ORDER BY c.id;
 
 
 -- Запрос 3.3. NOT EXISTS: «уснувшие» клиенты
--- Покупал до октября, но в октябре заказов нет: кандидат на возвращающую рассылку
+-- Покупал до октября, но дальше заказов нет
 SELECT
     c.id,
     c.name,
@@ -160,15 +151,12 @@ FROM customers c
 WHERE EXISTS (
         SELECT 1
         FROM orders o
-        WHERE o.customer_id = c.id
-          AND o.status <> 'cancelled'
-          AND o.order_date < '2026-10-01'
+        WHERE o.customer_id = c.id AND o.status <> 'cancelled' AND o.order_date < '2026-10-01'
     )
   AND NOT EXISTS (
         SELECT 1
         FROM orders o
-        WHERE o.customer_id = c.id
-          AND o.order_date >= '2026-10-01'
+        WHERE o.customer_id = c.id AND o.order_date >= '2026-10-01'
     )
 ORDER BY last_order_date;
 
@@ -179,24 +167,21 @@ SELECT
     c.name,
     (SELECT MAX(o.order_date)::date
      FROM orders o
-     WHERE o.customer_id = c.id
-       AND o.status <> 'cancelled') AS last_order_date,
+     WHERE o.customer_id = c.id AND o.status <> 'cancelled') AS last_order_date,
     (SELECT COUNT(*)
      FROM orders o
-     WHERE o.customer_id = c.id
-       AND o.status = 'delivered') AS delivered_cnt,
+     WHERE o.customer_id = c.id AND o.status = 'delivered') AS delivered_cnt,
     (SELECT COALESCE(SUM(oi.quantity * oi.price), 0)
      FROM orders o
      JOIN order_items oi ON oi.order_id = o.id
-     WHERE o.customer_id = c.id
-       AND o.status <> 'cancelled') AS total_spent
+     WHERE o.customer_id = c.id AND o.status <> 'cancelled') AS total_spent
 FROM customers c
 ORDER BY total_spent DESC, c.id;
 
 
 
 -- ЧАСТЬ 4. Комплексный отчёт с использованием CTE
--- Какие покупатели приносят больше всего выручки, какой у них средний чек и любимая категория, и к какому сегменту их отнести?
+-- Какие покупатели приносят больше всего выручки, какой у них средний чек и любимая категория, и к какому сегменту их отнести
 WITH params AS (
     SELECT DATE '2026-10-24' AS report_date,
            30000::numeric AS vip_threshold,
@@ -204,7 +189,6 @@ WITH params AS (
            21 AS dormant_days
 ),
 order_lines AS (
-    -- строки неотменённых заказов с категорией и суммой
     SELECT o.id AS order_id,
            o.customer_id,
            o.order_date::date AS order_day,
@@ -217,7 +201,6 @@ order_lines AS (
     WHERE o.status <> 'cancelled'
 ),
 order_totals AS (
-    -- сумма по каждому заказу
     SELECT order_id,
            customer_id,
            order_day,
@@ -226,7 +209,6 @@ order_totals AS (
     GROUP BY order_id, customer_id, order_day
 ),
 customer_stats AS (
-    -- показатели по покупателям
     SELECT customer_id,
            COUNT(*) AS orders_cnt,
            SUM(order_total) AS revenue,
@@ -236,7 +218,6 @@ customer_stats AS (
     GROUP BY customer_id
 ),
 category_spend AS (
-    -- выручка по категориям для каждого покупателя
     SELECT customer_id,
            category_name,
            SUM(line_total) AS category_revenue,

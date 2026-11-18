@@ -24,7 +24,7 @@ CREATE TABLE addresses (
         ON DELETE CASCADE,
     CONSTRAINT uq_addresses_id_customer UNIQUE (id, customer_id)
 );
-
+-- сделать чтобы у клиента была возможность сохранять мнго адресов и выбирать у себя любой адрес
 CREATE TABLE categories (
     id BIGSERIAL,
     name VARCHAR(100) NOT NULL,

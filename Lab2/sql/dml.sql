@@ -173,7 +173,7 @@ INSERT INTO order_items (order_id, product_id, quantity, price)
 SELECT o.id, p.id, v.qty, p.price
 FROM orders o
 JOIN customers c ON c.id = o.customer_id AND c.email = 'kirill@example.com'
-JOIN (VALUES ('Наушники', 1), ('Мышь', 2)) AS v(product_name, qty) ON TRUE
+CROSS JOIN (VALUES('Наушники', 1), ('Мышь', 2)) AS v(product_name, qty)
 JOIN products p ON p.name = v.product_name;
 
 COMMIT;
@@ -196,8 +196,7 @@ SELECT id, status FROM orders WHERE id = 27;
 -- 3. Массовый UPDATE по содержательному условию
 UPDATE orders
 SET status = 'shipped'
-WHERE status = 'paid'
-  AND order_date < '2026-10-15';
+WHERE status = 'paid' AND order_date < '2026-10-15';
 
 SELECT id, order_date::date AS order_date, status
 FROM orders
@@ -211,10 +210,8 @@ SELECT COUNT(*) AS items_before FROM order_items WHERE order_id = 10;
 DELETE FROM orders
 WHERE id = 10 AND status = 'cancelled';
 
-SELECT COUNT(*) AS items_after FROM order_items WHERE order_id = 10;   -- 0
+SELECT COUNT(*) AS items_after FROM order_items WHERE order_id = 10;
 
--- Попытка удалить покупателя с заказами нарушает ограничение orders.customer_id ... ON DELETE RESTRICT и завершится ошибкой.
--- DELETE FROM customers WHERE email = 'anna@example.com';
 
 INSERT INTO customers (name, email) VALUES ('Временный покупатель', 'temp@example.com');
 INSERT INTO addresses (customer_id, city, street, house)
@@ -222,7 +219,7 @@ SELECT id, 'Москва', 'Тестовая', '1' FROM customers WHERE email = 
 
 DELETE FROM customers WHERE email = 'temp@example.com';
 
-SELECT COUNT(*) AS temp_left FROM customers WHERE email = 'temp@example.com';   -- 0
+SELECT COUNT(*) AS temp_left FROM customers WHERE email = 'temp@example.com';
 
 
 -- 5. ROLLBACK
